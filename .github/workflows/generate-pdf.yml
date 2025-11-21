@@ -1,1 +1,55 @@
+name: Generate PDF from HTML
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "reports/templates/**"
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Puppeteer
+        run: |
+          npm init -y
+          npm install puppeteer@21
+
+      - name: Generate PDFs
+        run: |
+          mkdir -p reports/output
+          for file in reports/templates/*.html; do
+            filename=$(basename "$file" .html)
+            node <<EOF
+            const fs = require('fs');
+            const puppeteer = require('puppeteer');
+
+            (async () => {
+              const browser = await puppeteer.launch({ headless: "new" });
+              const page = await browser.newPage();
+              await page.goto('file://' + process.cwd() + '/${file}', { waitUntil: 'networkidle0' });
+              await page.pdf({
+                path: 'reports/output/' + '${filename}.pdf',
+                format: 'A4',
+                printBackground: true
+              });
+              await browser.close();
+            })();
+EOF
+          done
+
+      - name: Upload PDFs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: exmxc-reports
+          path: reports/output/
 

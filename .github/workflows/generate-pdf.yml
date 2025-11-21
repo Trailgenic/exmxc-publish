@@ -54,7 +54,6 @@ const path = require('path');
   await browser.close();
 })();
 EOF
-
           done
 
       - name: Upload PDFs as artifacts

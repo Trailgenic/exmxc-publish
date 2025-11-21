@@ -4,7 +4,8 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "pdf-templates/**"
+      - "reports/templates/*.html"
+      - "pdf-templates/*.html"
 
 jobs:
   build-pdf:
@@ -14,26 +15,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install Puppeteer
+      - name: Install Node & Puppeteer
         run: |
           npm init -y
           npm install puppeteer@21
 
-      - name: Generate PDFs
+      - name: Create output directory
+        run: mkdir -p reports/outputs
+
+      - name: Generate PDFs (reports/templates)
         run: |
-          mkdir -p reports/output
-          for file in pdf-templates/*.html; do
+          for file in reports/templates/*.html; do
+            [ -e "$file" ] || continue
             filename=$(basename "$file" .html)
-            FILEPATH="$file" FILENAME="$filename" node process-pdf.js
+            node scripts/process-pdf.js "$file" "reports/outputs/$filename.pdf"
           done
 
-      - name: Upload PDFs as artifacts
+      - name: Generate PDFs (pdf-templates)
+        run: |
+          for file in pdf-templates/*.html; do
+            [ -e "$file" ] || continue
+            filename=$(basename "$file" .html)
+            node scripts/process-pdf.js "$file" "reports/outputs/$filename.pdf"
+          done
+
+      - name: Upload PDFs
         uses: actions/upload-artifact@v4
         with:
-          name: exmxc-reports
-          path: reports/output/
+          name: exmxc-pdfs
+          path: reports/outputs/

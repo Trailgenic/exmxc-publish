@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "reports/templates/**"
+      - "pdf-templates/**"
 
 jobs:
   build-pdf:
@@ -27,7 +27,7 @@ jobs:
       - name: Generate PDFs
         run: |
           mkdir -p reports/output
-          for file in reports/templates/*.html; do
+          for file in pdf-templates/*.html; do
             filename=$(basename "$file" .html)
             FILEPATH="$file" FILENAME="$filename" node process-pdf.js
           done

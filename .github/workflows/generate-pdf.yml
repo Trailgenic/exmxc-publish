@@ -4,8 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "reports/templates/*.html"
-      - "pdf-templates/*.html"
+      - "templates/html/**"
 
 jobs:
   build-pdf:
@@ -15,32 +14,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Node & Puppeteer
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Puppeteer
         run: |
           npm init -y
           npm install puppeteer@21
 
-      - name: Create output directory
-        run: mkdir -p reports/outputs
-
-      - name: Generate PDFs (reports/templates)
+      - name: Generate PDFs
         run: |
-          for file in reports/templates/*.html; do
-            [ -e "$file" ] || continue
+          mkdir -p pdf/outputs
+          for file in templates/html/*.html; do
             filename=$(basename "$file" .html)
-            node scripts/process-pdf.js "$file" "reports/outputs/$filename.pdf"
+
+            FILEPATH="$file" FILENAME="$filename" node <<'EOF'
+const puppeteer = require('puppeteer');
+const path = require('path');
+
+(async () => {
+  const filePath = process.env.FILEPATH;
+  const fileName = process.env.FILENAME;
+
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
+
+  await page.goto('file://' + path.resolve(filePath), {
+    waitUntil: 'networkidle0'
+  });
+
+  await page.pdf({
+    path: path.join('pdf/outputs', fileName + '.pdf'),
+    format: 'A4',
+    printBackground: true
+  });
+
+  await browser.close();
+})();
+EOF
+
           done
 
-      - name: Generate PDFs (pdf-templates)
-        run: |
-          for file in pdf-templates/*.html; do
-            [ -e "$file" ] || continue
-            filename=$(basename "$file" .html)
-            node scripts/process-pdf.js "$file" "reports/outputs/$filename.pdf"
-          done
-
-      - name: Upload PDFs
+      - name: Upload PDFs as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: exmxc-pdfs
-          path: reports/outputs/
+          name: exmxc-reports
+          path: pdf/outputs/
